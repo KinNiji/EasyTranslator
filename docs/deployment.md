@@ -7,7 +7,7 @@
 3. 在 **Build and deployment** 中选择 **GitHub Actions**。
 4. 等待 `Deploy GitHub Pages` 工作流完成；部署地址会显示在工作流摘要和 Pages 设置中。
 
-工作流使用 Node.js 22 执行 `npm ci` 与 `npm run build`，然后发布 `out/` 静态目录。项目不依赖服务端 API Route，适合 GitHub Pages。
+工作流使用 Node.js 22 执行 `npm ci` 与 `npm run build`，然后发布 `out/` 静态目录。构建时会自动使用仓库名作为路径前缀，因此项目页面地址形如 `https://<owner>.github.io/<repository>/` 时，脚本、样式与品牌图片仍会正确加载。项目不依赖服务端 API Route，适合 GitHub Pages。
 
 ## 发布后检查
 
