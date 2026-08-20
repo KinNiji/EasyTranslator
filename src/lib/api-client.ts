@@ -1,5 +1,19 @@
 import type { Language, UsageEvent } from '@/lib/types';
 
+export type Pricing = {
+  sttPerMinute: number;
+  textInputPerMillion: number;
+  textOutputPerMillion: number;
+  ttsPerCharacter: number;
+};
+
+export const defaultPricing: Pricing = {
+  sttPerMinute: 0.003,
+  textInputPerMillion: 0.15,
+  textOutputPerMillion: 0.60,
+  ttsPerCharacter: 0.000015,
+};
+
 export type ApiConfig = {
   baseUrl: string;
   apiKey: string;
@@ -7,6 +21,7 @@ export type ApiConfig = {
   translationModel: string;
   ttsModel: string;
   voice: string;
+  pricing: Pricing;
 };
 
 type TokenUsage = { input_tokens?: number; output_tokens?: number; prompt_tokens?: number; completion_tokens?: number };
@@ -80,7 +95,7 @@ export async function testApi(config: ApiConfig): Promise<UsageEvent> {
   const tokens = getTokenUsage(data.usage);
   return createUsage({
     operation: 'test', model: config.translationModel, ...tokens,
-    costUsd: calculateTextCost(tokens.inputTokens, tokens.outputTokens), costKind: 'calculated', requestId, outcome: 'success',
+    costUsd: calculateTextCost(tokens.inputTokens, tokens.outputTokens, config.pricing), costKind: 'calculated', requestId, outcome: 'success',
   });
 }
 
@@ -104,7 +119,7 @@ export async function transcribeAudio(
     text,
     usage: createUsage({
       operation: 'stt', model: config.transcriptionModel, ...tokens, audioDurationMs: durationMs,
-      costUsd: durationMs / 60000 * 0.003, costKind: 'estimated', requestId, outcome: 'success',
+      costUsd: durationMs / 60000 * config.pricing.sttPerMinute, costKind: 'estimated', requestId, outcome: 'success',
     }),
   };
 }
@@ -150,7 +165,7 @@ export async function translateText(
   const tokens = getTokenUsage(data.usage);
   return {
     ...translated,
-    usage: createUsage({ operation: 'translation', model: config.translationModel, ...tokens, costUsd: calculateTextCost(tokens.inputTokens, tokens.outputTokens), costKind: 'calculated', requestId, outcome: 'success' }),
+    usage: createUsage({ operation: 'translation', model: config.translationModel, ...tokens, costUsd: calculateTextCost(tokens.inputTokens, tokens.outputTokens, config.pricing), costKind: 'calculated', requestId, outcome: 'success' }),
   };
 }
 
@@ -169,14 +184,14 @@ export async function synthesizeSpeech(
     audio,
     usage: createUsage({
       operation: 'tts', model: config.ttsModel, characters: text.length,
-      costUsd: text.length * 0.000015, costKind: 'estimated', requestId: response.headers.get('x-request-id') ?? undefined, outcome: 'success',
+      costUsd: text.length * config.pricing.ttsPerCharacter, costKind: 'estimated', requestId: response.headers.get('x-request-id') ?? undefined, outcome: 'success',
     }),
   };
 }
 
-export function calculateTextCost(inputTokens?: number, outputTokens?: number): number | undefined {
+export function calculateTextCost(inputTokens?: number, outputTokens?: number, pricing: Pricing = defaultPricing): number | undefined {
   if (inputTokens === undefined && outputTokens === undefined) return undefined;
-  return (inputTokens ?? 0) * 0.15 / 1_000_000 + (outputTokens ?? 0) * 0.60 / 1_000_000;
+  return (inputTokens ?? 0) * pricing.textInputPerMillion / 1_000_000 + (outputTokens ?? 0) * pricing.textOutputPerMillion / 1_000_000;
 }
 
 export function describeApiError(error: unknown): string {

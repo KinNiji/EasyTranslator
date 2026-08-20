@@ -113,6 +113,10 @@ textarea:disabled { background: color-mix(in srgb, var(--card) 76%, var(--paper)
 .settings-modal input, .settings-modal select { display: block; width: 100%; margin-top: 5px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--card); font-weight: 400; }
 .model-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .model-grid input { font-size: .76rem; background: #f4f7f8; }
+.price-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 16px 0 7px; padding: 11px; border: 1px solid var(--line); border-radius: 9px; }
+.price-grid legend { padding: 0 5px; color: var(--muted); font-size: .75rem; font-weight: 700; }
+.price-grid label { margin: 0; }
+.pricing-notice { margin: 6px 0 13px; }
 .toast { position: fixed; z-index: 20; left: 50%; bottom: 24px; width: min(calc(100% - 32px), 520px); transform: translateX(-50%); padding: 11px 14px; border-radius: 10px; background: #18394f; color: white; font-size: .88rem; box-shadow: var(--shadow); }
 .usage-panel { display: grid; grid-template-columns: 1fr auto; gap: 5px 12px; margin-top: 18px; padding: 12px; border: 1px solid #d6e6e6; border-radius: 10px; background: #f6fbfb; }
 .usage-panel > div { display: grid; gap: 2px; }
@@ -139,4 +143,5 @@ textarea:disabled { background: color-mix(in srgb, var(--card) 76%, var(--paper)
   .translation-grid { grid-template-columns: 1fr; }
   .translation textarea { min-height: 80px; }
   .model-grid { grid-template-columns: 1fr; gap: 0; }
+  .price-grid { grid-template-columns: 1fr; gap: 0; }
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { OnboardingDialog } from '@/components/onboarding-dialog';
-import { describeApiError, synthesizeSpeech, testApi, transcribeAudio, translateText, type ApiConfig } from '@/lib/api-client';
+import { defaultPricing, describeApiError, synthesizeSpeech, testApi, transcribeAudio, translateText, type ApiConfig, type Pricing } from '@/lib/api-client';
 import { listConversations, removeConversation, saveConversation } from '@/lib/conversation-db';
 import { downloadDocx, downloadPdf, downloadText, importConversationJson, toMarkdown, type ExportLanguage } from '@/lib/export-conversation';
 import { languageLabels, translator, type UiLanguage } from '@/lib/i18n';
@@ -11,7 +11,7 @@ import { createConversation, createUtterance, languageName, type Conversation, t
 const displayLanguages: Array<Exclude<Language, 'und'>> = ['zh', 'fr', 'en'];
 const initialConfig: ApiConfig = {
   baseUrl: 'https://api.openai-proxy.org/v1', apiKey: '',
-  transcriptionModel: 'gpt-4o-mini-transcribe', translationModel: 'gpt-4o-mini', ttsModel: 'gpt-4o-mini-tts', voice: 'alloy',
+  transcriptionModel: 'gpt-4o-mini-transcribe', translationModel: 'gpt-4o-mini', ttsModel: 'gpt-4o-mini-tts', voice: 'alloy', pricing: defaultPricing,
 };
 const spokenLanguageLabels: Record<UiLanguage, Record<Language, string>> = {
   'zh-CN': { zh: '中文', fr: '法语', en: '英语', und: '待确认' },
@@ -24,6 +24,7 @@ function failureEvent(operation: UsageEvent['operation'], model: string, utteran
   return { id: crypto.randomUUID(), utteranceId, operation, model, createdAt: new Date().toISOString(), costKind: 'unavailable', outcome: 'failed', errorCode: message };
 }
 function formatCost(cost: number | undefined): string { return cost === undefined ? '—' : `$${cost < 0.01 ? cost.toFixed(5) : cost.toFixed(3)}`; }
+function priceValue(value: string, fallback: number): number { if (!value.trim()) return fallback; const next = Number(value); return Number.isFinite(next) && next >= 0 ? next : fallback; }
 
 export default function Home() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -123,6 +124,7 @@ export default function Home() {
   }
   function setSourceLanguage(language: Language) { updateActive((utterance) => ({ ...utterance, source: { ...utterance.source, language, confirmedAt: undefined }, updatedAt: new Date().toISOString() })); }
   function updateTranslation(language: Exclude<Language, 'und'>, text: string) { updateActive((utterance) => ({ ...utterance, translations: { ...utterance.translations, [language]: { text, status: 'edited' } }, updatedAt: new Date().toISOString() })); }
+  function updatePricing(key: keyof Pricing, value: string) { setConfig((current) => ({ ...current, pricing: { ...current.pricing, [key]: priceValue(value, current.pricing[key]) } })); }
   function requireApiKey(): boolean { if (config.apiKey.trim()) return true; setSettingsOpen(true); setToast('请先在设置中输入 API Key。'); return false; }
 
   async function translateCurrent() {
@@ -283,7 +285,7 @@ export default function Home() {
         </>}
       </section>
     </div>
-    {settingsOpen && <div className="modal-backdrop" role="presentation" onMouseDown={() => setSettingsOpen(false)}><section className="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" onMouseDown={(event) => event.stopPropagation()}><div className="modal-title"><h2 id="settings-title">{t('apiSettings')}</h2><button className="icon-button" onClick={() => setSettingsOpen(false)}>×</button></div><p>{t('apiPrivacy')} <code>/v1</code>。</p><label>{t('language')}<select value={uiLanguage} onChange={(event) => setUiLanguage(event.target.value as UiLanguage)}>{(Object.keys(languageLabels) as UiLanguage[]).map((language) => <option key={language} value={language}>{languageLabels[language]}</option>)}</select></label><label>Base URL<input value={config.baseUrl} onChange={(event) => setConfig({ ...config, baseUrl: event.target.value })} autoComplete="url" /></label><label>API Key<input value={config.apiKey} type="password" onChange={(event) => setConfig({ ...config, apiKey: event.target.value })} autoComplete="off" placeholder="sk-…" /></label><div className="model-grid"><label>STT<input value={config.transcriptionModel} onChange={(event) => setConfig({ ...config, transcriptionModel: event.target.value })} /></label><label>Translation<input value={config.translationModel} onChange={(event) => setConfig({ ...config, translationModel: event.target.value })} /></label><label>TTS<input value={config.ttsModel} onChange={(event) => setConfig({ ...config, ttsModel: event.target.value })} /></label><label>Voice<input value={config.voice} onChange={(event) => setConfig({ ...config, voice: event.target.value })} /></label></div><button className="secondary-button" onClick={() => void runApiTest()} disabled={isBusy}>{busy === 'testing' ? t('testing') : t('apiTest')}</button><p className="test-result" aria-live="polite">{apiTestMessage}</p></section></div>}
+    {settingsOpen && <div className="modal-backdrop" role="presentation" onMouseDown={() => setSettingsOpen(false)}><section className="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" onMouseDown={(event) => event.stopPropagation()}><div className="modal-title"><h2 id="settings-title">{t('apiSettings')}</h2><button className="icon-button" onClick={() => setSettingsOpen(false)}>×</button></div><p>{t('apiPrivacy')} <code>/v1</code>。</p><label>{t('language')}<select value={uiLanguage} onChange={(event) => setUiLanguage(event.target.value as UiLanguage)}>{(Object.keys(languageLabels) as UiLanguage[]).map((language) => <option key={language} value={language}>{languageLabels[language]}</option>)}</select></label><label>Base URL<input value={config.baseUrl} onChange={(event) => setConfig({ ...config, baseUrl: event.target.value })} autoComplete="url" /></label><label>API Key<input value={config.apiKey} type="password" onChange={(event) => setConfig({ ...config, apiKey: event.target.value })} autoComplete="off" placeholder="sk-…" /></label><div className="model-grid"><label>STT<input value={config.transcriptionModel} onChange={(event) => setConfig({ ...config, transcriptionModel: event.target.value })} /></label><label>Translation<input value={config.translationModel} onChange={(event) => setConfig({ ...config, translationModel: event.target.value })} /></label><label>TTS<input value={config.ttsModel} onChange={(event) => setConfig({ ...config, ttsModel: event.target.value })} /></label><label>Voice<input value={config.voice} onChange={(event) => setConfig({ ...config, voice: event.target.value })} /></label></div><fieldset className="price-grid"><legend>{t('pricing')}</legend><label>{t('sttPerMinute')}<input type="number" min="0" step="0.0001" value={config.pricing.sttPerMinute} onChange={(event) => updatePricing('sttPerMinute', event.target.value)} /></label><label>{t('textInputPerMillion')}<input type="number" min="0" step="0.01" value={config.pricing.textInputPerMillion} onChange={(event) => updatePricing('textInputPerMillion', event.target.value)} /></label><label>{t('textOutputPerMillion')}<input type="number" min="0" step="0.01" value={config.pricing.textOutputPerMillion} onChange={(event) => updatePricing('textOutputPerMillion', event.target.value)} /></label><label>{t('ttsPerCharacter')}<input type="number" min="0" step="0.000001" value={config.pricing.ttsPerCharacter} onChange={(event) => updatePricing('ttsPerCharacter', event.target.value)} /></label></fieldset><p className="pricing-notice">{t('pricingNotice')}</p><button className="secondary-button" onClick={() => void runApiTest()} disabled={isBusy}>{busy === 'testing' ? t('testing') : t('apiTest')}</button><p className="test-result" aria-live="polite">{apiTestMessage}</p></section></div>}
     <input ref={importInputRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => void importConversation(event.target.files?.[0])} />
     {helpOpen && <OnboardingDialog language={uiLanguage} translate={t} secondsLeft={secondsLeft} required={!acknowledged} onAcknowledge={acknowledgeDisclaimer} onClose={() => setHelpOpen(false)} />}
     {toast && <div className="toast" role="status">{toast}</div>}
