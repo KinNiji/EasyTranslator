@@ -61,6 +61,14 @@ OpenAI 目前也列出实时翻译/语音模型。它适合以后做连续、低
 
 一些“OpenAI 兼容”服务只兼容聊天接口，未实现音频接口或未返回 `usage`。测试页必须逐项探测，显示“可用 / 不支持 / CORS 被拦截 / 认证失败”，而非笼统地显示连接成功。
 
+### 3.4 CloseAI 当前接入配置与验证结果
+
+CloseAI 的 OpenAI 兼容文档要求 Base URL 使用 `https://api.openai-proxy.org/v1`，`/v1` 不可省略。该服务说明不支持 `file`、fine-tune、assistants 等有状态接口；本应用的逐句 STT、无状态 Responses 翻译和 TTS 不依赖这些接口。
+
+在 2026-08-20 的最小付费测试中，以下接口均已返回成功：`/v1/chat/completions`（含 tokens）、`/v1/responses`、Responses JSON Schema Structured Outputs、`/v1/audio/speech`（MP3）以及 `/v1/audio/transcriptions`。模型列表未列出音频模型，因此应用不得仅以模型列表决定音频功能是否可用，必须在“测试 API”时实际探测各能力。
+
+参考：[CloseAI OpenAI 兼容接口说明](https://doc.closeai-asia.com/tutorial/api/openai.html)。
+
 ## 4. 架构
 
 ```text

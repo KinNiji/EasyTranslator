@@ -13,7 +13,7 @@ import {
 } from '@/lib/types';
 
 const displayLanguages: Array<Exclude<Language, 'und'>> = ['zh', 'fr', 'en'];
-const defaultBaseUrl = 'https://api.openai-proxy.org';
+const defaultBaseUrl = 'https://api.openai-proxy.org/v1';
 
 function withUpdatedAt(conversation: Conversation): Conversation {
   return { ...conversation, updatedAt: new Date().toISOString() };
