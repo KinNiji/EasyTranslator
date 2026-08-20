@@ -19,12 +19,30 @@ export type Utterance = {
   updatedAt: string;
 };
 
+export type UsageEvent = {
+  id: string;
+  utteranceId?: string;
+  operation: 'stt' | 'translation' | 'tts' | 'test';
+  model: string;
+  createdAt: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  audioDurationMs?: number;
+  characters?: number;
+  costUsd?: number;
+  costKind: 'calculated' | 'estimated' | 'unavailable';
+  requestId?: string;
+  outcome: 'success' | 'failed';
+  errorCode?: string;
+};
+
 export type Conversation = {
   id: string;
   title: string;
   utterances: Utterance[];
   createdAt: string;
   updatedAt: string;
+  usageEvents: UsageEvent[];
 };
 
 export const languageName: Record<Language, string> = {
@@ -64,6 +82,7 @@ export function createConversation(): Conversation {
     id: crypto.randomUUID(),
     title: `交流记录 ${new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric' }).format(new Date())}`,
     utterances: [createUtterance(1)],
+    usageEvents: [],
     createdAt: now,
     updatedAt: now,
   };

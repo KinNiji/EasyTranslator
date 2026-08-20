@@ -68,6 +68,7 @@ h2 { font-size: 1.25rem; }
 .card-topline input { width: 100px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); }
 .input-mode { margin: 17px 0 10px; display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: .82rem; }
 .input-mode button { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: #f6f8fa; }
+.input-mode button.recording { color: white; background: var(--danger); border-color: var(--danger); animation: recording-pulse 1.2s ease-in-out infinite; }
 .field-label { display: block; font-weight: 700; font-size: .88rem; margin-bottom: 7px; }
 textarea { display: block; width: 100%; resize: vertical; line-height: 1.55; border: 1px solid var(--line); border-radius: 9px; padding: 10px; color: var(--ink); background: white; }
 textarea:disabled { background: #f4f7f8; color: #405261; }
@@ -95,6 +96,15 @@ textarea:disabled { background: #f4f7f8; color: #405261; }
 .model-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .model-grid input { font-size: .76rem; background: #f4f7f8; }
 .toast { position: fixed; z-index: 20; left: 50%; bottom: 24px; width: min(calc(100% - 32px), 520px); transform: translateX(-50%); padding: 11px 14px; border-radius: 10px; background: #18394f; color: white; font-size: .88rem; box-shadow: var(--shadow); }
+.usage-panel { display: grid; grid-template-columns: 1fr auto; gap: 5px 12px; margin-top: 18px; padding: 12px; border: 1px solid #d6e6e6; border-radius: 10px; background: #f6fbfb; }
+.usage-panel > div { display: grid; gap: 2px; }
+.usage-panel strong { font-size: .86rem; }
+.usage-panel span, .usage-panel small { color: var(--muted); font-size: .74rem; }
+.usage-panel > b { color: var(--teal); align-self: center; font-size: 1.05rem; }
+.usage-panel small { grid-column: 1 / -1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.test-result { min-height: 1.4em; color: var(--teal) !important; }
+
+@keyframes recording-pulse { 50% { opacity: .65; } }
 
 @media (max-width: 760px) {
   .app-shell { padding: 14px 14px 30px; }

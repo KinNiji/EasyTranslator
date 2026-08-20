@@ -25,7 +25,9 @@ export async function listConversations(): Promise<Conversation[]> {
     request.onerror = () => reject(request.error);
     request.onsuccess = () => {
       db.close();
-      resolve((request.result as Conversation[]).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
+      resolve((request.result as Conversation[])
+        .map((conversation) => ({ ...conversation, usageEvents: conversation.usageEvents ?? [] }))
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
     };
   });
 }
