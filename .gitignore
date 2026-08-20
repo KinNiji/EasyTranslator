@@ -1,0 +1,16 @@
+# dependencies and build output
+node_modules/
+.next/
+out/
+
+# local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# test artefacts and editor files
+coverage/
+playwright-report/
+test-results/
+.DS_Store
+*.tsbuildinfo
