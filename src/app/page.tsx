@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { OnboardingDialog } from '@/components/onboarding-dialog';
 import { describeApiError, synthesizeSpeech, testApi, transcribeAudio, translateText, type ApiConfig } from '@/lib/api-client';
 import { listConversations, removeConversation, saveConversation } from '@/lib/conversation-db';
-import { downloadText, toMarkdown } from '@/lib/export-conversation';
+import { downloadDocx, downloadPdf, downloadText, importConversationJson, toMarkdown, type ExportLanguage } from '@/lib/export-conversation';
 import { languageLabels, translator, type UiLanguage } from '@/lib/i18n';
 import { createConversation, createUtterance, languageName, type Conversation, type Language, type UsageEvent, type Utterance } from '@/lib/types';
 
@@ -41,6 +41,7 @@ export default function Home() {
   const [toast, setToast] = useState('');
   const [busy, setBusy] = useState<'testing' | 'transcribing' | 'translating' | 'speaking' | undefined>();
   const [recording, setRecording] = useState(false);
+  const [exporting, setExporting] = useState<'docx' | 'pdf' | undefined>();
   const [apiTestMessage, setApiTestMessage] = useState('尚未测试');
   const recorderRef = useRef<MediaRecorder | undefined>(undefined);
   const streamRef = useRef<MediaStream | undefined>(undefined);
@@ -48,6 +49,7 @@ export default function Home() {
   const segmentTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const transcriptionQueueRef = useRef<Promise<void>>(Promise.resolve());
   const conversationsRef = useRef<Conversation[]>([]);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const savedLanguage = window.localStorage.getItem('easy-translator-language') as UiLanguage | null;
@@ -223,8 +225,31 @@ export default function Home() {
     if (next) { setActiveUtteranceId(next.id); return; }
     const created = createUtterance(activeConversation.utterances.length + 1); commit({ ...activeConversation, utterances: [...activeConversation.utterances, created] }); setActiveUtteranceId(created.id);
   }
-  function exportMarkdown(language: Exclude<Language, 'und'> | 'source') { if (activeConversation) downloadText(`${activeConversation.title}-${language}.md`, toMarkdown(activeConversation, language)); }
+  function exportMarkdown(language: ExportLanguage) { if (activeConversation) downloadText(`${activeConversation.title}-${language}.md`, toMarkdown(activeConversation, language)); }
   function exportJson() { if (activeConversation) downloadText(`${activeConversation.title}-backup.json`, JSON.stringify(activeConversation, null, 2), 'application/json;charset=utf-8'); }
+  async function exportOffice(format: 'docx' | 'pdf', language: ExportLanguage) {
+    if (!activeConversation || exporting) return;
+    setExporting(format);
+    try {
+      if (format === 'docx') await downloadDocx(activeConversation, language);
+      else await downloadPdf(activeConversation, language);
+      setToast(format === 'docx' ? 'Word 文件已开始下载。' : 'PDF 文件已开始下载。');
+    } catch {
+      setToast('导出失败。请在较新的 Chrome、Edge 或 Safari 中重试。');
+    } finally { setExporting(undefined); }
+  }
+  async function importConversation(file: File | undefined) {
+    if (!file) return;
+    try {
+      if (file.size > 5 * 1024 * 1024) throw new Error('文件过大，请选择 5MB 以内的 JSON 备份。');
+      const restored = importConversationJson(await file.text());
+      commit(restored);
+      setActiveId(restored.id);
+      setActiveUtteranceId(restored.utterances[0]?.id);
+      setToast(`已导入“${restored.title}”。`);
+    } catch (error) { setToast(error instanceof Error ? error.message : '导入失败，请选择本工具导出的 JSON 文件。');
+    } finally { if (importInputRef.current) importInputRef.current.value = ''; }
+  }
   async function deleteActiveConversation() {
     if (!activeConversation || !window.confirm(`删除“${activeConversation.title}”？此操作只删除当前浏览器中的记录。`)) return;
     await removeConversation(activeConversation.id); const remaining = conversations.filter((item) => item.id !== activeConversation.id);
@@ -241,10 +266,10 @@ export default function Home() {
     <header className="topbar"><div><p className="eyebrow">EASYTRANSLATOR · P2</p><h1>{t('appName')}</h1></div><div className="top-actions"><button className="text-button" onClick={() => setHelpOpen(true)}>{t('help')}</button><button className="icon-button" aria-label={theme === 'dark' ? t('light') : t('dark')} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? '☀' : '◐'}</button><button className="icon-button" aria-label={t('apiSettings')} onClick={() => setSettingsOpen(true)}>⚙</button></div></header>
     <section className="safety-note"><span>{t('localOnly')}</span>{t('localNotice')}</section>
     <div className="workspace">
-      <aside className="conversation-list" aria-label={t('newConversation')}><button className="primary-button" onClick={createNewConversation} disabled={!acknowledged}>{t('newConversation')}</button>{conversations.length === 0 ? <p className="empty-list">{t('noConversations')}</p> : conversations.map((conversation) => <button key={conversation.id} className={`conversation-item ${conversation.id === activeId ? 'selected' : ''}`} onClick={() => selectConversation(conversation)} disabled={!acknowledged || recording}><strong>{conversation.title}</strong><small>{conversation.utterances.length} · {new Date(conversation.updatedAt).toLocaleDateString(uiLanguage)}</small></button>)}</aside>
+      <aside className="conversation-list" aria-label={t('newConversation')}><button className="primary-button" onClick={createNewConversation} disabled={!acknowledged}>{t('newConversation')}</button><button className="import-button" onClick={() => importInputRef.current?.click()} disabled={!acknowledged || recording}>{t('import')}</button>{conversations.length === 0 ? <p className="empty-list">{t('noConversations')}</p> : conversations.map((conversation) => <button key={conversation.id} className={`conversation-item ${conversation.id === activeId ? 'selected' : ''}`} onClick={() => selectConversation(conversation)} disabled={!acknowledged || recording}><strong>{conversation.title}</strong><small>{conversation.utterances.length} · {new Date(conversation.updatedAt).toLocaleDateString(uiLanguage)}</small></button>)}</aside>
       <section className="conversation-panel">
         {!activeConversation || !activeUtterance ? <div className="empty-state"><p>{t('startConversation')}</p><button className="primary-button" onClick={createNewConversation} disabled={!acknowledged}>{t('newConversation')}</button></div> : <>
-          <div className="conversation-heading"><input aria-label="Conversation title" value={activeConversation.title} onChange={(event) => commit({ ...activeConversation, title: event.target.value })} disabled={!acknowledged || recording} /><div className="heading-actions"><details className="export-menu"><summary>{t('export')}</summary><button onClick={() => exportMarkdown('source')}>{t('sourceExport')}</button><button onClick={() => exportMarkdown('zh')}>{t('chineseExport')}</button><button onClick={() => exportMarkdown('fr')}>{t('frenchExport')}</button><button onClick={() => exportMarkdown('en')}>{t('englishExport')}</button><button onClick={exportJson}>{t('jsonExport')}</button></details><button className="text-button danger" onClick={() => void deleteActiveConversation()} disabled={!acknowledged || recording}>{t('remove')}</button></div></div>
+          <div className="conversation-heading"><input aria-label="Conversation title" value={activeConversation.title} onChange={(event) => commit({ ...activeConversation, title: event.target.value })} disabled={!acknowledged || recording} /><div className="heading-actions"><details className="export-menu"><summary>{exporting ? t('exporting') : t('export')}</summary><strong>Markdown</strong><button onClick={() => exportMarkdown('source')}>{t('sourceExport')}</button><button onClick={() => exportMarkdown('zh')}>{t('chineseExport')}</button><button onClick={() => exportMarkdown('fr')}>{t('frenchExport')}</button><button onClick={() => exportMarkdown('en')}>{t('englishExport')}</button><strong>Word</strong><button disabled={Boolean(exporting)} onClick={() => void exportOffice('docx', 'source')}>{t('sourceDocx')}</button><button disabled={Boolean(exporting)} onClick={() => void exportOffice('docx', 'zh')}>{t('chineseDocx')}</button><button disabled={Boolean(exporting)} onClick={() => void exportOffice('docx', 'fr')}>{t('frenchDocx')}</button><button disabled={Boolean(exporting)} onClick={() => void exportOffice('docx', 'en')}>{t('englishDocx')}</button><strong>PDF</strong><button disabled={Boolean(exporting)} onClick={() => void exportOffice('pdf', 'source')}>{t('sourcePdf')}</button><button disabled={Boolean(exporting)} onClick={() => void exportOffice('pdf', 'zh')}>{t('chinesePdf')}</button><button disabled={Boolean(exporting)} onClick={() => void exportOffice('pdf', 'fr')}>{t('frenchPdf')}</button><button disabled={Boolean(exporting)} onClick={() => void exportOffice('pdf', 'en')}>{t('englishPdf')}</button><strong>Backup</strong><button onClick={exportJson}>{t('jsonExport')}</button></details><button className="text-button danger" onClick={() => void deleteActiveConversation()} disabled={!acknowledged || recording}>{t('remove')}</button></div></div>
           <nav className="utterance-strip" aria-label="Utterance navigation">{activeConversation.utterances.map((utterance) => <button key={utterance.id} className={utterance.id === activeUtteranceId ? 'current' : ''} onClick={() => setActiveUtteranceId(utterance.id)} disabled={!acknowledged || recording}>{utterance.sequence}{utterance.source.confirmedAt ? ' ✓' : ''}</button>)}</nav>
           <article className="utterance-card">
             <div className="card-topline"><span>#{activeUtterance.sequence}</span><label>{t('speaker')}<input value={activeUtterance.speakerLabel} onChange={(event) => updateActive((item) => ({ ...item, speakerLabel: event.target.value, updatedAt: new Date().toISOString() }))} disabled={!acknowledged || recording} /></label></div>
@@ -259,6 +284,7 @@ export default function Home() {
       </section>
     </div>
     {settingsOpen && <div className="modal-backdrop" role="presentation" onMouseDown={() => setSettingsOpen(false)}><section className="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" onMouseDown={(event) => event.stopPropagation()}><div className="modal-title"><h2 id="settings-title">{t('apiSettings')}</h2><button className="icon-button" onClick={() => setSettingsOpen(false)}>×</button></div><p>{t('apiPrivacy')} <code>/v1</code>。</p><label>{t('language')}<select value={uiLanguage} onChange={(event) => setUiLanguage(event.target.value as UiLanguage)}>{(Object.keys(languageLabels) as UiLanguage[]).map((language) => <option key={language} value={language}>{languageLabels[language]}</option>)}</select></label><label>Base URL<input value={config.baseUrl} onChange={(event) => setConfig({ ...config, baseUrl: event.target.value })} autoComplete="url" /></label><label>API Key<input value={config.apiKey} type="password" onChange={(event) => setConfig({ ...config, apiKey: event.target.value })} autoComplete="off" placeholder="sk-…" /></label><div className="model-grid"><label>STT<input value={config.transcriptionModel} onChange={(event) => setConfig({ ...config, transcriptionModel: event.target.value })} /></label><label>Translation<input value={config.translationModel} onChange={(event) => setConfig({ ...config, translationModel: event.target.value })} /></label><label>TTS<input value={config.ttsModel} onChange={(event) => setConfig({ ...config, ttsModel: event.target.value })} /></label><label>Voice<input value={config.voice} onChange={(event) => setConfig({ ...config, voice: event.target.value })} /></label></div><button className="secondary-button" onClick={() => void runApiTest()} disabled={isBusy}>{busy === 'testing' ? t('testing') : t('apiTest')}</button><p className="test-result" aria-live="polite">{apiTestMessage}</p></section></div>}
+    <input ref={importInputRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => void importConversation(event.target.files?.[0])} />
     {helpOpen && <OnboardingDialog language={uiLanguage} translate={t} secondsLeft={secondsLeft} required={!acknowledged} onAcknowledge={acknowledgeDisclaimer} onClose={() => setHelpOpen(false)} />}
     {toast && <div className="toast" role="status">{toast}</div>}
   </main>;
