@@ -61,7 +61,3 @@ npm run build
 ## 技术栈
 
 Next.js（静态导出） · TypeScript · IndexedDB · MediaRecorder · OpenAI-compatible API
-
-## 版权
-
-© 2026 Zheng Haoyu. 页面内的血防所与中国援助标识仅用于本项目的研修班展示与相关用途。
