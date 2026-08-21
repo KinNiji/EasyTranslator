@@ -8,7 +8,7 @@ const DialogTrigger = DialogPrimitive.Trigger;
 const DialogClose = DialogPrimitive.Close;
 
 function DialogContent({ className, children, ...props }: React.ComponentProps<typeof DialogPrimitive.Content>) {
-  return <DialogPrimitive.Portal><DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-slate-950/45" /><DialogPrimitive.Content className={cn('fixed inset-x-4 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-auto -translate-y-1/2 overflow-y-auto rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5 text-[var(--ink)] shadow-2xl outline-none sm:left-1/2 sm:w-full sm:max-w-xl sm:-translate-x-1/2', className)} {...props}>{children}</DialogPrimitive.Content></DialogPrimitive.Portal>;
+  return <DialogPrimitive.Portal><DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-slate-950/45" /><DialogPrimitive.Content className={cn('dialog-panel fixed inset-x-4 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-auto -translate-y-1/2 overflow-y-auto rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5 text-[var(--ink)] shadow-2xl outline-none sm:left-1/2 sm:w-full sm:max-w-xl sm:-translate-x-1/2', className)} {...props}>{children}</DialogPrimitive.Content></DialogPrimitive.Portal>;
 }
 
 function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) { return <div className={cn('mb-4 flex items-center justify-between gap-3', className)} {...props} />; }

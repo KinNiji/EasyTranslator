@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
-import { CircleHelp, Download, Info, Maximize2, Menu, Mic, Minimize2, Moon, Pencil, Settings, Square, Sun, Trash2, Volume2 } from 'lucide-react';
+import { CircleHelp, Download, Info, Languages, Maximize2, Menu, Mic, Minimize2, Moon, Pencil, Settings, Square, Sun, Trash2, Volume2 } from 'lucide-react';
 import { OnboardingDialog } from '@/components/onboarding-dialog';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogCloseButton, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -332,7 +332,20 @@ export default function Home() {
     </header>
 
     <section className="chat-stage">
-      {!activeConversation || !activeUtterance ? <div className="chat-empty"><Image src={`${assetBasePath}/brand/institute-logo.png`} alt="" width={388} height={95} /><h1>{t('appName')}</h1><p>{t('startConversation')}</p><button className="primary-button" onClick={createNewConversation} disabled={!acknowledged}>{t('newConversation')}</button></div> : <>
+      {!activeConversation || !activeUtterance ? <div className="chat-empty">
+        <div className="empty-language-mark" aria-hidden="true"><Languages /></div>
+        <p className="empty-eyebrow">中文 · Français · English</p>
+        <h1>{t('emptyWelcomeTitle')}</h1>
+        <p className="empty-intro">{t('emptyWelcomeText')}</p>
+        <ol className="empty-steps">
+          <li><span>1</span><p><strong>{t('emptyStepOneTitle')}</strong><small>{t('emptyStepOneText')}</small></p></li>
+          <li><span>2</span><p><strong>{t('emptyStepTwoTitle')}</strong><small>{t('emptyStepTwoText')}</small></p></li>
+          <li><span>3</span><p><strong>{t('emptyStepThreeTitle')}</strong><small>{t('emptyStepThreeText')}</small></p></li>
+          <li><span>4</span><p><strong>{t('emptyStepFourTitle')}</strong><small>{t('emptyStepFourText')}</small></p></li>
+        </ol>
+        <Button className="empty-start" onClick={createNewConversation} disabled={!acknowledged}>{t('newConversation')}</Button>
+        <p className="empty-note">{t('localNotice')}</p>
+      </div> : <>
         <div className="conversation-toolbar"><strong className="conversation-title">{activeConversation.title}</strong><div className="toolbar-actions"><Button className="tool-icon" variant="ghost" size="icon-sm" title={t('rename')} aria-label={t('rename')} onClick={openRename} disabled={!acknowledged || recording}><Pencil /></Button><Button className="tool-icon" variant="ghost" size="icon-sm" title={t('details')} aria-label={t('details')} onClick={() => setDetailsOpen(true)} disabled={!acknowledged}><Info /></Button><Button className="tool-icon" variant="ghost" size="icon-sm" title={t('export')} aria-label={t('export')} onClick={() => setExportOpen(true)} disabled={!acknowledged}><Download /></Button><Button className="tool-icon danger" variant="destructive" size="icon-sm" title={t('remove')} aria-label={t('remove')} onClick={() => void deleteActiveConversation()} disabled={!acknowledged || recording}><Trash2 /></Button></div></div>
         <div className="chat-feed" ref={feedRef}>
           {conversationMessages.length === 0 && <div className="chat-welcome"><p>{t('startConversation')}</p><span>{t('localNotice')}</span></div>}
