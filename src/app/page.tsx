@@ -201,6 +201,7 @@ export default function Home() {
         en: { text: translated.sourceLanguage === 'en' ? sourceText : translated.translations.en, status: 'generated' },
       }, updatedAt: new Date().toISOString() }), { ...translated.usage, utteranceId });
       setToast(`已识别为${spokenLanguageLabels[uiLanguage][translated.sourceLanguage]}，并生成另外两种语言。`);
+      advanceAfterRecordedTurn(conversationId, utteranceId);
     } catch (error) {
       const message = describeApiError(error); appendUsage(failureEvent('stt', config.transcriptionModel, utteranceId, message), conversationId); setToast(message);
     } finally { setBusy(undefined); }
@@ -272,6 +273,14 @@ export default function Home() {
     if (next) { setActiveUtteranceId(next.id); return; }
     const created = createUtterance(activeConversation.utterances.length + 1);
     commit({ ...activeConversation, utterances: [...activeConversation.utterances, created] }); setActiveUtteranceId(created.id);
+  }
+  function advanceAfterRecordedTurn(conversationId: string, utteranceId: string) {
+    const conversation = conversationsRef.current.find((item) => item.id === conversationId);
+    const currentIndex = conversation?.utterances.findIndex((item) => item.id === utteranceId) ?? -1;
+    if (!conversation || currentIndex < 0) return;
+    const next = conversation.utterances[currentIndex + 1] ?? createUtterance(conversation.utterances.length + 1);
+    if (!conversation.utterances[currentIndex + 1]) commit({ ...conversation, utterances: [...conversation.utterances, next] });
+    setActiveUtteranceId(next.id);
   }
   function selectPreviousTurn() {
     if (!activeConversation || activeIndex <= 0) return;
