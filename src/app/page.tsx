@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
-import { CircleHelp, Download, Info, Languages, Maximize2, Menu, Mic, Minimize2, Moon, Pencil, Settings, Square, Sun, Trash2, Volume2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CircleHelp, Download, Info, Languages, Maximize2, Menu, Mic, Minimize2, Moon, Pencil, Settings, Square, Sun, Trash2, Volume2 } from 'lucide-react';
 import { OnboardingDialog } from '@/components/onboarding-dialog';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogCloseButton, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -124,9 +124,9 @@ export default function Home() {
   const conversationMessages = activeConversation?.utterances.filter((utterance) => utterance.source.text.trim()) ?? [];
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight, behavior: 'smooth' }));
+    const frame = window.requestAnimationFrame(() => feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight, behavior: recording ? 'auto' : 'smooth' }));
     return () => window.cancelAnimationFrame(frame);
-  }, [activeConversation?.updatedAt, activeUtteranceId]);
+  }, [activeConversation?.updatedAt, activeUtteranceId, recording]);
 
   function commit(next: Conversation) {
     const updated = withUpdatedAt(next);
@@ -273,6 +273,10 @@ export default function Home() {
     const created = createUtterance(activeConversation.utterances.length + 1);
     commit({ ...activeConversation, utterances: [...activeConversation.utterances, created] }); setActiveUtteranceId(created.id);
   }
+  function selectPreviousTurn() {
+    if (!activeConversation || activeIndex <= 0) return;
+    setActiveUtteranceId(activeConversation.utterances[activeIndex - 1].id);
+  }
   function exportMarkdown(language: ExportLanguage) { if (activeConversation) downloadText(`${activeConversation.title}-${language}.md`, toMarkdown(activeConversation, language)); }
   function exportJson() { if (activeConversation) downloadText(`${activeConversation.title}-backup.json`, JSON.stringify(activeConversation, null, 2), 'application/json;charset=utf-8'); }
   async function exportOffice(format: 'docx' | 'pdf', language: ExportLanguage) {
@@ -346,7 +350,7 @@ export default function Home() {
         <Button className="empty-start" onClick={createNewConversation} disabled={!acknowledged}>{t('newConversation')}</Button>
         <p className="empty-note">{t('localNotice')}</p>
       </div> : <>
-        <div className="conversation-toolbar"><strong className="conversation-title">{activeConversation.title}</strong><div className="toolbar-actions"><Button className="tool-icon" variant="ghost" size="icon-sm" title={t('rename')} aria-label={t('rename')} onClick={openRename} disabled={!acknowledged || recording}><Pencil /></Button><Button className="tool-icon" variant="ghost" size="icon-sm" title={t('details')} aria-label={t('details')} onClick={() => setDetailsOpen(true)} disabled={!acknowledged}><Info /></Button><Button className="tool-icon" variant="ghost" size="icon-sm" title={t('export')} aria-label={t('export')} onClick={() => setExportOpen(true)} disabled={!acknowledged}><Download /></Button><Button className="tool-icon danger" variant="destructive" size="icon-sm" title={t('remove')} aria-label={t('remove')} onClick={() => void deleteActiveConversation()} disabled={!acknowledged || recording}><Trash2 /></Button></div></div>
+        <div className="conversation-toolbar"><strong className="conversation-title">{activeConversation.title}</strong><div className="turn-navigation" aria-label={t('liveTurn')}><Button className="turn-nav-button" variant="ghost" size="icon-sm" title={t('previous')} aria-label={t('previous')} onClick={selectPreviousTurn} disabled={!acknowledged || recording || activeIndex <= 0}><ChevronLeft /></Button><span aria-label={`${t('liveTurn')} ${activeIndex + 1} / ${activeConversation.utterances.length}`}>{activeIndex + 1}<i>/</i>{activeConversation.utterances.length}</span><Button className="turn-nav-button" variant="ghost" size="icon-sm" title={t('next')} aria-label={t('next')} onClick={createNextTurn} disabled={!acknowledged || recording || !activeUtterance.source.confirmedAt}><ChevronRight /></Button></div><div className="toolbar-actions"><Button className="tool-icon" variant="ghost" size="icon-sm" title={t('rename')} aria-label={t('rename')} onClick={openRename} disabled={!acknowledged || recording}><Pencil /></Button><Button className="tool-icon" variant="ghost" size="icon-sm" title={t('details')} aria-label={t('details')} onClick={() => setDetailsOpen(true)} disabled={!acknowledged}><Info /></Button><Button className="tool-icon" variant="ghost" size="icon-sm" title={t('export')} aria-label={t('export')} onClick={() => setExportOpen(true)} disabled={!acknowledged}><Download /></Button><Button className="tool-icon danger" variant="destructive" size="icon-sm" title={t('remove')} aria-label={t('remove')} onClick={() => void deleteActiveConversation()} disabled={!acknowledged || recording}><Trash2 /></Button></div></div>
         <div className="chat-feed" ref={feedRef}>
           {conversationMessages.length === 0 && <div className="chat-welcome"><p>{t('startConversation')}</p><span>{t('localNotice')}</span></div>}
           {conversationMessages.map((utterance) => <article className={`message-card ${utterance.id === activeUtterance.id ? 'current' : ''}`} key={utterance.id} onClick={() => setActiveUtteranceId(utterance.id)}>
@@ -356,7 +360,6 @@ export default function Home() {
         </div>
         <section className="composer-card">
           <InputGroup className="composer-input-row"><InputGroupTextarea value={activeUtterance.source.text} onChange={(event) => updateSource(event.target.value)} onBlur={() => { if (activeUtterance.source.text.trim() && !activeUtterance.source.confirmedAt && !isBusy) void translateCurrent(); }} placeholder={t('sourcePlaceholder')} rows={3} disabled={!acknowledged || recording || isBusy} /><InputGroupAddon className="desktop-record-addon"><Button className={`desktop-record ${recording ? 'recording' : ''}`} variant="default" size="icon" aria-label={recording ? t('stopRecording') : t('startRecording')} title={recording ? t('stopRecording') : t('startRecording')} onClick={toggleDesktopRecording} disabled={!acknowledged || (isBusy && !recording)}>{recording ? <Square /> : <Mic />}</Button></InputGroupAddon></InputGroup>
-          {activeUtterance.source.confirmedAt && <button className="secondary-button next-turn" onClick={createNextTurn}>{t('next')}</button>}
           <div className="record-dock mobile-record"><Button className={`hold-record ${recording ? 'recording' : ''}`} variant="default" aria-label={recording ? t('releaseToStop') : t('holdToRecord')} onPointerDown={(event) => { event.preventDefault(); void startRecording(); }} onPointerUp={stopRecording} onPointerCancel={stopRecording} onPointerLeave={(event) => { if (event.buttons) stopRecording(); }} disabled={!acknowledged || (isBusy && !recording)}><span>{recording ? <Square /> : <Mic />}</span><div>{recording ? t('releaseToStop') : t('holdToRecord')}<small>{recording ? t('recording') : t('automaticTranslation')}</small></div></Button></div>
         </section>
       </>}
